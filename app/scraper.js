@@ -112,7 +112,7 @@ const scrapeEventDetails = async (context, link) => {
 
     const dateString = await eventPage.$eval('div[dir="auto"].css-901oao.r-d8nonl.r-c321bz.r-ubezar.r-13uqrnb.r-majxgm.r-rjixqe', el => el.textContent.trim()).catch(() => 'N/A');
     const formattedDate = formatDateStringForMongoDB(dateString);
-    details.date = formattedDate.start;
+    details.date = formattedDate;
 
     details.time = await eventPage.$eval('div[dir="auto"].css-901oao.r-d8nonl.r-c321bz.r-ubezar.r-13uqrnb.r-majxgm.r-rjixqe span.css-901oao.css-16my406.r-jwli3a.r-c321bz.r-ubezar.r-13uqrnb.r-majxgm.r-rjixqe', el => el.textContent.trim()).catch(() => 'N/A');
     details.location = await eventPage.$eval('div.css-901oao.r-1uaz6oj.r-qklmqi.r-13awgt0.r-1777fci.r-11wrixw.r-1l7z4oj.r-95jzfe a', el => el.textContent.trim()).catch(() => 'House of Yes');
@@ -183,43 +183,23 @@ const processExcerpt = (html, link) => {
 };
 
 // Function to format date string for MongoDB
+// Function to format date string for MongoDB
 const formatDateStringForMongoDB = (dateString) => {
-  const datePattern = /(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (\d{1,2}) (\w{3})/;
-  const timePattern = /From (\d{1,2}:\d{2} [APM]{2}) To (\d{1,2}:\d{2} [APM]{2})/;
-
-  const dateMatch = dateString.match(datePattern);
-  const timeMatch = dateString.match(timePattern);
-
-  if (!dateMatch || !timeMatch) {
-    return 'Invalid Date Format';
-  }
-
-  const day = dateMatch[2];
-  const month = dateMatch[3];
   const currentYear = new Date().getFullYear();
-
-  const startTime = timeMatch[1];
-  const endTime = timeMatch[2];
-
-  const startDateTime = new Date(`${month} ${day}, ${currentYear} ${startTime}`);
-  const endDateTime = new Date(`${month} ${day}, ${currentYear} ${endTime}`);
-
-  if (endDateTime < startDateTime) {
-    endDateTime.setDate(endDateTime.getDate() + 1);
-  }
+  const dateParts = dateString.split(' ');
+  const day = dateParts[1];
+  const month = dateParts[2];
+  const date = new Date(`${month} ${day}, ${currentYear}`);
 
   // Format to ISO 8601 string (YYYY-MM-DDTHH:MM:SS.SSSZ)
-  const isoStartDateTime = startDateTime.toISOString();
-  const isoEndDateTime = endDateTime.toISOString();
+  let isoString = date.toISOString();
 
   // Extract date part only (YYYY-MM-DD)
-  const isoStartDateOnly = isoStartDateTime.split('T')[0];
-  const isoEndDateOnly = isoEndDateTime.split('T')[0];
+  let datePart = isoString.split('T')[0];
+  let timePart = '00:00:00.000';
+  let timezoneOffset = '+00:00';
 
-  return {
-    start: `${isoStartDateOnly}T00:00:00.000+00:00`,
-    end: `${isoEndDateOnly}T00:00:00.000+00:00`
-  };
+  return `${datePart}T${timePart}${timezoneOffset}`;
 };
 
 const calculateExpiresAt = eventDate => {
